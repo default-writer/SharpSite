@@ -1,16 +1,24 @@
-﻿using SharpSite.Abstractions;
+﻿using SharpSite.Abstractions.Plugins;
 using SharpSite.Abstractions.Theme;
-using SharpSite.Plugins;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace SharpSite.Web;
+namespace SharpSite.Plugins;
 
-public class ApplicationState
+public class ApplicationStateOptions
 {
-	public record CurrentThemeRecord(string IdVersion);
-
 	public CurrentThemeRecord? CurrentTheme { get; set; }
+	/// <summary>
+	/// Maximum file upload size in megabytes.
+	/// </summary>
+	public long MaximumUploadSizeMB { get; set; } = 10; // 10MB
+}
+
+public class ApplicationState: ApplicationStateOptions, IApplicationState
+{
+	public IPluginManifest[] Themes => Plugins.Values
+			.Where(p => p.Features.Contains(Enum.GetName(PluginFeatures.Theme)?.ToLowerInvariant()))
+			.ToArray();
 
 	/// <summary>
 	/// Maximum file upload size in megabytes.
@@ -23,7 +31,7 @@ public class ApplicationState
 		get
 		{
 			if (CurrentTheme is null) return null;
-			var themeManifest = Plugins.Values.FirstOrDefault(p => p.IdVersionToString() == CurrentTheme.IdVersion);
+			var themeManifest = Plugins.Values.FirstOrDefault(p => p.IdVersion == CurrentTheme.IdVersion);
 			if (themeManifest is not null)
 			{
 				var pluginAssembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == themeManifest.Id);
@@ -40,9 +48,9 @@ public class ApplicationState
 	/// List of the plugins that are currently loaded.
 	/// </summary>
 	[JsonIgnore]
-	public Dictionary<string, PluginManifest> Plugins { get; } = new();
+	public Dictionary<string, IPluginManifest> Plugins { get; } = new();
 
-	public void AddPlugin(string pluginName, PluginManifest manifest)
+	public void AddPlugin(string pluginName, IPluginManifest manifest)
 	{
 		if (!Plugins.ContainsKey(pluginName))
 		{
@@ -54,23 +62,23 @@ public class ApplicationState
 		}
 	}
 
-	public void SetTheme(PluginManifest manifest)
+	public void SetTheme(IPluginManifest manifest)
 	{
 		// identify the pluginAssembly in memory that's named after the manifest.Id
 		var pluginAssembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == manifest.Id);
 
 		var themeType = pluginAssembly?.GetTypes().FirstOrDefault(t => typeof(IHasStylesheets).IsAssignableFrom(t));
-		if (themeType is not null) CurrentTheme = new(manifest.IdVersionToString());
+		if (themeType is not null) CurrentTheme = new(manifest.IdVersion);
 	}
 
-	public async Task Load()
+	public ApplicationState()
 	{
 		// load application state from applicationState.json in the root of the plugins folder
 		var appStateFile = Path.Combine("plugins", "applicationState.json");
 
 		if (File.Exists(appStateFile))
 		{
-			var json = await File.ReadAllTextAsync(appStateFile);
+			var json = File.ReadAllText(appStateFile);
 			var state = JsonSerializer.Deserialize<ApplicationState>(json);
 			if (state is not null)
 			{

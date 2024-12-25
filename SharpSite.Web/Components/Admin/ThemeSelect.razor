@@ -1,4 +1,4 @@
-﻿@inject ApplicationState AppState
+﻿@inject IApplicationState AppState
 @inject NavigationManager NavigationManager
 @rendermode @(new InteractiveServerRenderMode(true))
 
@@ -9,7 +9,7 @@
 	@foreach (var plugin in AvailableThemePlugins)
 	{
 		<option 
-		value="@plugin.IdVersionToString()">@plugin.DisplayName</option>
+		value="@plugin.IdVersion">@plugin.DisplayName</option>
 	}
 </select>
 
@@ -17,7 +17,7 @@
 
 @code {
 
-	PluginManifest[] AvailableThemePlugins = Array.Empty<PluginManifest>();
+	IPluginManifest[] AvailableThemePlugins = Array.Empty<IPluginManifest>();
 
 	string SelectedTheme = string.Empty;
 
@@ -26,9 +26,7 @@
 
 		SelectedTheme = AppState.CurrentTheme is not null ? AppState.CurrentTheme.IdVersion : string.Empty;
 
-		AvailableThemePlugins = AppState.Plugins.Values
-			.Where(p => p.Features.Contains(PluginFeatures.Theme))
-			.ToArray();
+		AvailableThemePlugins = AppState.Themes;
 
 		base.OnInitialized();
 	}
@@ -41,7 +39,7 @@
 		}
 		else
 		{
-			AppState.SetTheme(AvailableThemePlugins.First(p => p.IdVersionToString() == SelectedTheme));
+			AppState.SetTheme(AvailableThemePlugins.First(p => p.IdVersion == SelectedTheme));
 		}
 		await AppState.Save();
 		NavigationManager.NavigateTo("/admin", true);

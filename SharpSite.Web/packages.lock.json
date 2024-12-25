@@ -447,14 +447,6 @@
           "Microsoft.Extensions.Options": "9.0.0"
         }
       },
-      "Microsoft.Extensions.Logging.Abstractions": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "g0UfujELzlLbHoVG8kPKVBaW470Ewi+jnptGS9KUi6jcb+k2StujtK3m26DFSGGwQ/+bVgZfsWqNzlP6YOejvw==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.0"
-        }
-      },
       "Microsoft.Extensions.Logging.Configuration": {
         "type": "Transitive",
         "resolved": "9.0.0",
@@ -768,6 +760,12 @@
           "SharpSite.Abstractions.Theme": "[1.0.0, )"
         }
       },
+      "sharpsite.abstractions.plugins": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.Extensions.Hosting.Abstractions": "[9.0.0, )"
+        }
+      },
       "sharpsite.abstractions.theme": {
         "type": "Project"
       },
@@ -778,11 +776,20 @@
           "SharpSite.Abstractions": "[1.0.0, )"
         }
       },
+      "sharpsite.logging": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.ApplicationInsights": "[2.22.0, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[9.0.0, )"
+        }
+      },
       "sharpsite.plugins": {
         "type": "Project",
         "dependencies": {
           "Microsoft.AspNetCore.Components": "[9.0.0, )",
-          "SharpSite.Abstractions": "[1.0.0, )"
+          "SharpSite.Abstractions": "[1.0.0, )",
+          "SharpSite.Abstractions.Plugins": "[1.0.0, )",
+          "SharpSite.Logging": "[1.0.0, )"
         }
       },
       "sharpsite.security.postgres": {
@@ -831,6 +838,15 @@
           "Npgsql.OpenTelemetry": "8.0.6",
           "OpenTelemetry.Extensions.Hosting": "1.9.0",
           "System.Text.Json": "9.0.0"
+        }
+      },
+      "Microsoft.ApplicationInsights": {
+        "type": "CentralTransitive",
+        "requested": "[2.22.0, )",
+        "resolved": "2.22.0",
+        "contentHash": "3AOM9bZtku7RQwHyMEY3tQMrHIgjcfRDa6YQpd/QG2LDGvMydSlL9Di+8LLMt7J2RDdfJ7/2jdYv6yHcMJAnNw==",
+        "dependencies": {
+          "System.Diagnostics.DiagnosticSource": "5.0.0"
         }
       },
       "Microsoft.AspNetCore.Authorization": {
@@ -931,6 +947,15 @@
           "Microsoft.Extensions.Caching.Abstractions": "9.0.0",
           "Microsoft.Extensions.Identity.Core": "9.0.0",
           "Microsoft.Extensions.Logging": "9.0.0"
+        }
+      },
+      "Microsoft.Extensions.Logging.Abstractions": {
+        "type": "CentralTransitive",
+        "requested": "[9.0.0, )",
+        "resolved": "9.0.0",
+        "contentHash": "g0UfujELzlLbHoVG8kPKVBaW470Ewi+jnptGS9KUi6jcb+k2StujtK3m26DFSGGwQ/+bVgZfsWqNzlP6YOejvw==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.0"
         }
       },
       "Microsoft.Extensions.ServiceDiscovery": {

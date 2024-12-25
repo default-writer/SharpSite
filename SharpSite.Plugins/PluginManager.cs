@@ -1,28 +1,29 @@
-﻿using Microsoft.AspNetCore.Components.Forms;
-using SharpSite.Abstractions;
+﻿using Microsoft.Extensions.Logging;
+using SharpSite.Abstractions.Plugins;
 using SharpSite.Plugins;
-using SharpSite.Security.Postgres.Account.Pages;
-using System.IO;
+using SharpSite.Plugins.Constants;
 using System.IO.Compression;
-using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 
 namespace SharpSite.Web;
 
-public class PluginManager(PluginAssemblyManager pluginAssemblyManager, ApplicationState AppState, ILogger<PluginManager> logger) : IDisposable
+public class PluginManager(PluginAssemblyManager pluginAssemblyManager, IApplicationState appState, ILogger<PluginManager> logger)
 {
+	/// <summary>
+	/// List of the plugins that are currently loaded.
+	/// </summary>
+	public Dictionary<string, IPluginManifest> Plugins { get; } = new();
+
 	private Plugin? plugin;
-	private bool disposedValue;
 
 	public PluginManifest? Manifest { get; private set; }
 
 	public static void Initialize()
 	{
-		Directory.CreateDirectory("plugins");
-		Directory.CreateDirectory(Path.Combine("plugins", "_uploaded"));
-		Directory.CreateDirectory(Path.Combine("plugins", "_wwwroot"));
+		Directory.CreateDirectory(Paths.PluginsDirectory);
+		Directory.CreateDirectory(Paths.PluginsUploadDirectory);
+		Directory.CreateDirectory(Paths.PluginsRootDirectory);
 	}
 
 	public void HandleUploadedPlugin(Plugin plugin)
@@ -33,7 +34,7 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 
 		using var currentUploadedPlugin = new MemoryStream(plugin.Bytes);
 		using var archive = new ZipArchive(currentUploadedPlugin, ZipArchiveMode.Read, true);
-		var manifestEntry = archive.GetEntry("manifest.json");
+		var manifestEntry = archive.GetEntry(Strings.PluginsManifestFile);
 
 		if (manifestEntry is null)
 		{
@@ -95,12 +96,11 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 			logger.LogInformation("Assembly {AssemblyName} loaded at runtime.", pluginDll);
 		}
 		// Add plugin to the list of plugins in ApplicationState
-		AppState.AddPlugin(Manifest.Id, Manifest);
+		appState.AddPlugin(Manifest.Id, Manifest);
 		logger.LogInformation("Plugin {PluginName} loaded at runtime.", Manifest);
-
-		if (Manifest.Features.Contains(PluginFeatures.Theme))
+		if (Manifest.Features.Contains(Enum.GetName(PluginFeatures.Theme)?.ToLowerInvariant()))
 		{
-			AppState.SetTheme(Manifest);
+			appState.SetTheme(Manifest);
 		}
 
 		logger.LogInformation("Plugin {PluginName} saved and registered.", plugin.Name);
@@ -112,12 +112,12 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 	public async Task LoadPluginsAtStartup()
 	{
 
-		foreach (var pluginFolder in Directory.GetDirectories("plugins"))
+		foreach (var pluginFolder in Directory.GetDirectories(Paths.PluginsDirectory))
 		{
 			var pluginName = Path.GetFileName(pluginFolder);
 			if (pluginName.StartsWith("_")) continue;
 
-			var manifestPath = Path.Combine(pluginFolder, "manifest.json");
+			var manifestPath = Path.Combine(pluginFolder, Strings.PluginsManifestFile);
 			if (!File.Exists(manifestPath)) continue;
 
 			// Add plugin to the list of plugins in ApplicationState
@@ -137,7 +137,7 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 				logger.LogInformation("Assembly {AssemblyName} loaded at startup.", pluginDll);
 			}
 
-			AppState.AddPlugin(key, manifest!);
+			appState.AddPlugin(key, manifest!);
 			logger.LogInformation("Plugin {PluginName} loaded at startup.", pluginName);
 
 		}
@@ -148,7 +148,7 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 		DirectoryInfo pluginLibFolder;
 		ZipArchive archive;
 
-		var pluginFolder = Directory.CreateDirectory(Path.Combine("plugins", "_uploaded"));
+		var pluginFolder = Directory.CreateDirectory(Paths.PluginsUploadDirectory);
 		var filePath = Path.Combine(pluginFolder.FullName, $"{pluginManifest!.Id}@{pluginManifest.Version}.sspkg");
 
 		using var pluginAssemblyFileStream = File.OpenWrite(filePath);
@@ -156,10 +156,10 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 		logger.LogInformation("Plugin saved to {FilePath}", filePath);
 
 		// Create a folder named after the plugin name under /plugins
-		pluginLibFolder = Directory.CreateDirectory(Path.Combine("plugins", $"{pluginManifest!.Id}@{pluginManifest.Version}"));
+		pluginLibFolder = Directory.CreateDirectory(Path.Combine(Strings.PluginsDirectory, $"{pluginManifest!.Id}@{pluginManifest.Version}"));
 
 		// Create the plugins/_wwwroot folder if it doesn't exist
-		var pluginWwwRootFolder = Directory.CreateDirectory(Path.Combine("plugins", "_wwwroot", $"{pluginManifest!.Id}@{pluginManifest.Version}"));
+		var pluginWwwRootFolder = Directory.CreateDirectory(Path.Combine(Paths.PluginsRootDirectory, $"{pluginManifest!.Id}@{pluginManifest.Version}"));
 		using var pluginMemoryStream = new MemoryStream(plugin.Bytes);
 		archive = new ZipArchive(pluginMemoryStream, ZipArchiveMode.Read, true);
 		foreach (var entry in archive.Entries)
@@ -170,7 +170,7 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 
 			string entryPath = entry.FullName switch
 			{
-				"manifest.json" => Path.Combine(pluginLibFolder.FullName, entry.Name),
+				Strings.PluginsManifestFile => Path.Combine(pluginLibFolder.FullName, entry.Name),
 				var s when s.StartsWith("lib/") => Path.Combine(pluginLibFolder.FullName, entry.Name),
 				var s when s.StartsWith("web/") => Path.Combine(pluginWwwRootFolder.FullName, entry.Name),
 				_ => string.Empty
@@ -202,28 +202,5 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 			logger.LogError(exception, "Invalid plugin filename: {FileName}", pluginName);
 			throw exception;
 		}
-	}
-
-	protected virtual void Dispose(bool disposing)
-	{
-		if (!disposedValue)
-		{
-			if (disposing)
-			{
-				CleanupCurrentUploadedPlugin();
-			}
-
-			// TODO: free unmanaged resources (unmanaged objects) and override finalizer
-			// TODO: set large fields to null
-			//pluginAssemblyManager.Dispose();
-			disposedValue = true;
-		}
-	}
-
-	public void Dispose()
-	{
-		// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-		Dispose(disposing: true);
-		GC.SuppressFinalize(this);
 	}
 }

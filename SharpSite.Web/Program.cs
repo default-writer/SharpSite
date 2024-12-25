@@ -6,6 +6,7 @@ using SharpSite.Web;
 using SharpSite.Web.Components;
 using SharpSite.Web.Locales;
 using SharpSite.Plugins;
+using SharpSite.Abstractions.Plugins;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,12 +21,14 @@ var pgSecurity = new RegisterPostgresSecurityServices();
 pgSecurity.RegisterServices(builder);
 #endregion
 
-// Configure applicatin state and the PluginManager
-var appState = new ApplicationState();
-await appState.Load();
-builder.Services.AddSingleton(appState);
-builder.Services.AddSingleton<PluginAssemblyManager>();
+// Load plugins
+#region Plugins
+var plugins = new RegisterPluginServices();
+plugins.RegisterServices(builder);
+
+builder.Services.AddSingleton<IApplicationState, ApplicationState>();
 builder.Services.AddSingleton<PluginManager>();
+#endregion
 
 // add the custom localization features for the application framework
 builder.ConfigureRequestLocalization();

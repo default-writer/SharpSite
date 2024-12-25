@@ -11,7 +11,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SharpSite.Abstractions.Plugins\SharpSite.Abstractions.Plugins.csproj" />
     <ProjectReference Include="..\SharpSite.Abstractions\SharpSite.Abstractions.csproj" />
+    <ProjectReference Include="..\SharpSite.Logging\SharpSite.Logging.csproj" />
   </ItemGroup>
 
 </Project>
