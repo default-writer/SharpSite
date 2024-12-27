@@ -5,8 +5,6 @@ using SharpSite.Security.Postgres.Account.Pages;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace SharpSite.Web;
@@ -44,27 +42,17 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 
 		using var manifestStream = manifestEntry.Open();
 
-		Manifest = ReadManifest(manifestStream);
+		Manifest = manifestStream.ReadManifest();
 		Manifest.ValidateManifest(logger, plugin);
 
 		// Add your logic to process the manifest content here
 		logger.LogInformation("Plugin {PluginName} uploaded and manifest processed.", Manifest);
 	}
 
-
 	private PluginManifest? ReadManifest(string manifestPath)
 	{
 		using var manifestStream = File.OpenRead(manifestPath);
-		return ReadManifest(manifestStream);
-	}
-
-	private PluginManifest ReadManifest(Stream manifestStream)
-	{
-		var options = new JsonSerializerOptions
-		{
-			Converters = { new JsonStringEnumConverter() }
-		};
-		return JsonSerializer.Deserialize<PluginManifest>(manifestStream, options)!;
+		return manifestStream.ReadManifest();
 	}
 
 	public async Task SavePlugin()
@@ -76,10 +64,7 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 			throw exception;
 		}
 
-		FileStream fileStream;
-		DirectoryInfo pluginLibFolder;
-		ZipArchive archive;
-		(fileStream, pluginLibFolder, archive) = await ExtractAndInstallPlugin(logger, plugin, Manifest);
+		DirectoryInfo pluginLibFolder = await ExtractAndInstallPlugin(logger, plugin, Manifest);
 
 		// By convention it is a package_name of (<package_name>@<package_vesrson>.(sspkg|.dll)
 		var key = Manifest.Id;
@@ -115,7 +100,7 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 		foreach (var pluginFolder in Directory.GetDirectories("plugins"))
 		{
 			var pluginName = Path.GetFileName(pluginFolder);
-			if (pluginName.StartsWith("_")) continue;
+			if (pluginName.StartsWith('_')) continue;
 
 			var manifestPath = Path.Combine(pluginFolder, "manifest.json");
 			if (!File.Exists(manifestPath)) continue;
@@ -143,7 +128,7 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 		}
 	}
 
-	private static async Task<(FileStream, DirectoryInfo, ZipArchive)> ExtractAndInstallPlugin(ILogger<PluginManager> logger, Plugin plugin, PluginManifest pluginManifest)
+	private static async Task<DirectoryInfo> ExtractAndInstallPlugin(ILogger<PluginManager> logger, Plugin plugin, PluginManifest pluginManifest)
 	{
 		DirectoryInfo pluginLibFolder;
 		ZipArchive archive;
@@ -184,7 +169,7 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 
 		}
 
-		return (pluginAssemblyFileStream, pluginLibFolder, archive);
+		return pluginLibFolder;
 
 	}
 
@@ -196,7 +181,7 @@ public class PluginManager(PluginAssemblyManager pluginAssemblyManager, Applicat
 
 	public void ValidatePlugin(string pluginName)
 	{
-		if (pluginName.StartsWith("_"))
+		if (pluginName.StartsWith('_'))
 		{
 			var exception = new Exception("Plugin filenames are not allowed to start with an underscore '_'");
 			logger.LogError(exception, "Invalid plugin filename: {FileName}", pluginName);

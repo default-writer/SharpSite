@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using SharpSite.Abstractions;
 using System.ComponentModel.DataAnnotations;
 
@@ -28,11 +29,33 @@ public class PgSharpSiteUser : IdentityUser
 
 }
 
-public class PgSecurityContext : IdentityDbContext<PgSharpSiteUser>
+public class PgSecurityContext(DbContextOptions<PgSecurityContext> options) : IdentityDbContext<PgSharpSiteUser>(options)
 {
-	public PgSecurityContext(DbContextOptions<PgSecurityContext> options)
-		: base(options)
+}
+
+public class PgUserManager(IUserStore<PgSharpSiteUser> store, IOptions<IdentityOptions> optionsAccessor, IPasswordHasher<PgSharpSiteUser> passwordHasher, IEnumerable<IUserValidator<PgSharpSiteUser>> userValidators, IEnumerable<IPasswordValidator<PgSharpSiteUser>> passwordValidators, ILookupNormalizer keyNormalizer, IdentityErrorDescriber errors, IServiceProvider services, ILogger<UserManager<PgSharpSiteUser>> logger): UserManager<PgSharpSiteUser>(store, optionsAccessor, passwordHasher, userValidators, passwordValidators, keyNormalizer, errors, services, logger)
+{
+	private readonly ILogger<UserManager<PgSharpSiteUser>> _logger = logger;
+
+	protected override string CreateTwoFactorRecoveryCode()
 	{
+		return base.CreateTwoFactorRecoveryCode();
 	}
 
+	protected override Task<IdentityResult> UpdatePasswordHash(PgSharpSiteUser user, string newPassword, bool validatePassword)
+	{
+		return base.UpdatePasswordHash(user, newPassword, validatePassword);
+	}
+
+	protected override Task<IdentityResult> UpdateUserAsync(PgSharpSiteUser user)
+	{
+		return base.UpdateUserAsync(user);
+	}
+
+	protected override async Task<PasswordVerificationResult> VerifyPasswordAsync(IUserPasswordStore<PgSharpSiteUser> store, PgSharpSiteUser user, string password)
+	{
+		var result = await base.VerifyPasswordAsync(store, user, password);
+		_logger.LogInformation("User {UserId} passord verification completed with {PasswordVerificationResult}", user.Id, result);
+		return result;
+	}
 }

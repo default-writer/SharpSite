@@ -6,6 +6,7 @@ using SharpSite.Web;
 using SharpSite.Web.Components;
 using SharpSite.Web.Locales;
 using SharpSite.Plugins;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,19 @@ await appState.Load();
 builder.Services.AddSingleton(appState);
 builder.Services.AddSingleton<PluginAssemblyManager>();
 builder.Services.AddSingleton<PluginManager>();
+
+// Manually register Identity services
+//builder.Services.AddScoped<IUserStore<PgSharpSiteUser>, YourUserStoreImplementation>();
+builder.Services.AddScoped<IPasswordHasher<PgSharpSiteUser>, PasswordHasher<PgSharpSiteUser>>();
+builder.Services.AddScoped<IUserValidator<PgSharpSiteUser>, UserValidator<PgSharpSiteUser>>();
+builder.Services.AddScoped<IPasswordValidator<PgSharpSiteUser>, PasswordValidator<PgSharpSiteUser>>();
+builder.Services.AddScoped<ILookupNormalizer, UpperInvariantLookupNormalizer>();
+builder.Services.AddScoped<IdentityErrorDescriber>();
+builder.Services.AddScoped<IServiceProvider, ServiceProvider>();
+builder.Services.AddScoped<ILogger<UserManager<PgSharpSiteUser>>, Logger<UserManager<PgSharpSiteUser>>>();
+
+// Register your custom UserManager
+builder.Services.AddScoped<UserManager<PgSharpSiteUser>, PgUserManager>();
 
 // add the custom localization features for the application framework
 builder.ConfigureRequestLocalization();
