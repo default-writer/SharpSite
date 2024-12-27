@@ -7,6 +7,8 @@ using SharpSite.Web.Components;
 using SharpSite.Web.Locales;
 using SharpSite.Plugins;
 using Microsoft.AspNetCore.Identity;
+using SharpSite.Logging;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +23,13 @@ var pgSecurity = new RegisterPostgresSecurityServices();
 pgSecurity.RegisterServices(builder);
 #endregion
 
+var ls = new RegisterLoggingServices();
+ls.RegisterServices(builder.Host, builder);
+builder.Host.UseSerilog((context, loggerConfiguration) =>
+{
+	loggerConfiguration.WriteTo.Console();
+	loggerConfiguration.ReadFrom.Configuration(context.Configuration);
+});
 // Configure applicatin state and the PluginManager
 var appState = new ApplicationState();
 await appState.Load();
@@ -65,6 +74,12 @@ builder.Services.AddRazorComponents()
 builder.Services.AddOutputCache();
 builder.Services.AddMemoryCache();
 
+// Configure logging
+//builder.Logging.ClearProviders();
+//builder.Logging.AddConsole(); // Add console logging
+//builder.Logging.AddDebug();   // Add debug logging
+//builder.Logging.AddLogger();
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -108,6 +123,7 @@ app.MapDefaultEndpoints();
 app.UseRequestLocalization();
 
 await pgSecurity.RunAtStartup(app.Services);
+await ls.RunAtStartup(app);
 
 // Use DI to get the logger
 var pluginManager = app.Services.GetRequiredService<PluginManager>();
