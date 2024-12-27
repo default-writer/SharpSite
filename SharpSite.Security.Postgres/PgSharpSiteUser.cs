@@ -55,7 +55,7 @@ public class PgUserManager(IUserStore<PgSharpSiteUser> store, IOptions<IdentityO
 	protected override async Task<PasswordVerificationResult> VerifyPasswordAsync(IUserPasswordStore<PgSharpSiteUser> store, PgSharpSiteUser user, string password)
 	{
 		var result = await base.VerifyPasswordAsync(store, user, password);
-		_logger.LogInformation("User {UserId} passord verification completed with {PasswordVerificationResult}", user.Id, result);
+		_logger.LogInformation("User {UserId} password verification completed with {PasswordVerificationResult}", user.Id, result);
 		return result;
 	}
 }
